@@ -58,15 +58,24 @@ def parse_args(config: GptCliConfig):
     parser = argparse.ArgumentParser(
         description="Run a chat session with ChatGPT. See https://github.com/kharvd/gpt-cli for more information."
     )
+    valid_assistants = list(set([*DEFAULT_ASSISTANTS.keys(), *config.assistants.keys()]))
     parser.add_argument(
-        "assistant_name",
+        "prompt_args",
+        type=str,
+        nargs="*",
+        help="The prompt to send. If provided, runs non-interactively and exits. "
+        "Multiple words are joined with spaces. Use `-` to read from stdin.",
+    )
+    parser.add_argument(
+        "--assistant",
+        "-a",
         type=str,
         default=config.default_assistant,
-        nargs="?",
-        choices=list(set([*DEFAULT_ASSISTANTS.keys(), *config.assistants.keys()])),
-        help="The name of assistant to use. `general` (default) is a generally helpful assistant, `dev` is a software \
-development assistant with shorter responses. You can specify your own assistants in the config file \
-~/.config/gpt-cli/gpt.yml. See the README for more information.",
+        choices=valid_assistants,
+        dest="assistant_name",
+        help="The name of assistant to use. `general` (default) is a generally helpful assistant, `dev` is a software "
+        "development assistant with shorter responses. You can specify your own assistants in the config file "
+        "~/.config/gpt-cli/gpt.yml. See the README for more information.",
     )
     parser.add_argument(
         "--no_markdown",
@@ -158,11 +167,32 @@ response in a script. Ignored when the --prompt option is not specified.",
 
 
 def validate_args(args):
+    has_positional_prompt = args.prompt_args and len(args.prompt_args) > 0
+    
+    if has_positional_prompt and args.prompt is not None:
+        print(
+            "Cannot use both positional prompt and --prompt/-p option. Please use one or the other."
+        )
+        sys.exit(1)
+    
+    if has_positional_prompt and args.execute is not None:
+        print(
+            "Cannot use both positional prompt and --execute/-e option. Please use one or the other."
+        )
+        sys.exit(1)
+    
     if args.prompt is not None and args.execute is not None:
         print(
             "The --prompt and --execute options are mutually exclusive. Please specify only one of them."
         )
         sys.exit(1)
+    
+    # Convert positional prompt args to the prompt format
+    if has_positional_prompt:
+        if args.prompt_args == ["-"]:
+            args.prompt = ["-"]
+        else:
+            args.prompt = [" ".join(args.prompt_args)]
 
 
 def main():
@@ -172,6 +202,7 @@ def main():
     else:
         config = GptCliConfig()
     args = parse_args(config)
+    validate_args(args)
 
     if args.log_file is not None:
         filename = datetime.datetime.now().strftime(args.log_file)
