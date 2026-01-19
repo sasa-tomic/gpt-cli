@@ -197,6 +197,9 @@ def main():
     if config.anthropic_api_key:
         gptcli.providers.anthropic.api_key = config.anthropic_api_key
 
+    if config.anthropic_base_url:
+        gptcli.providers.anthropic.base_url = config.anthropic_base_url
+
     if config.cohere_api_key:
         gptcli.providers.cohere.api_key = config.cohere_api_key
 

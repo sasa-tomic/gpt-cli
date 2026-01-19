@@ -15,13 +15,14 @@ from gptcli.completion import (
 )
 
 api_key = os.environ.get("ANTHROPIC_API_KEY")
+base_url = os.environ.get("ANTHROPIC_BASE_URL")
 
 
 def get_client():
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY environment variable not set")
 
-    return anthropic.Anthropic(api_key=api_key)
+    return anthropic.Anthropic(api_key=api_key, base_url=base_url)
 
 
 class AnthropicCompletionProvider(CompletionProvider):
