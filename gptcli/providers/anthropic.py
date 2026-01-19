@@ -18,14 +18,22 @@ api_key = os.environ.get("ANTHROPIC_API_KEY")
 base_url = os.environ.get("ANTHROPIC_BASE_URL")
 
 
-def get_client():
-    if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY environment variable not set")
-
-    return anthropic.Anthropic(api_key=api_key, base_url=base_url)
-
-
 class AnthropicCompletionProvider(CompletionProvider):
+    def __init__(
+        self,
+        base_url_override: Optional[str] = None,
+        api_key_override: Optional[str] = None,
+    ):
+        effective_api_key = api_key_override or api_key
+        effective_base_url = base_url_override or base_url
+
+        if not effective_api_key:
+            raise ValueError("ANTHROPIC_API_KEY environment variable not set")
+
+        self.client = anthropic.Anthropic(
+            api_key=effective_api_key, base_url=effective_base_url
+        )
+
     def complete(
         self, messages: List[Message], args: dict, stream: bool = False
     ) -> Iterator[CompletionEvent]:
@@ -33,11 +41,16 @@ class AnthropicCompletionProvider(CompletionProvider):
         DEFAULT_MAX_TOKENS = 4096
         CLAUDE_MAX_TOKENS_LIMIT = 64000
 
+        # Strip provider prefix if present
+        model = args["model"]
+        if model.startswith("anthropic:"):
+            model = model[len("anthropic:"):]
+
         # Set initial max_tokens value
         max_tokens = DEFAULT_MAX_TOKENS
 
         # If thinking mode is enabled, adjust max_tokens accordingly
-        if "thinking_budget" in args and "claude-3-7" in args["model"]:
+        if "thinking_budget" in args and "claude-3-7" in model:
             thinking_budget = args["thinking_budget"]
             # Max tokens must be greater than thinking budget
             # Calculate required max_tokens, but don't exceed the API limit
@@ -49,11 +62,11 @@ class AnthropicCompletionProvider(CompletionProvider):
         kwargs = {
             "stop_sequences": [anthropic.HUMAN_PROMPT],
             "max_tokens": max_tokens,
-            "model": args["model"],
+            "model": model,
         }
 
         # Check if thinking mode is enabled
-        thinking_enabled = "thinking_budget" in args and "claude-3-7" in args["model"]
+        thinking_enabled = "thinking_budget" in args and "claude-3-7" in model
 
         # Handle temperature and top_p
         if thinking_enabled:
@@ -80,11 +93,10 @@ class AnthropicCompletionProvider(CompletionProvider):
 
         kwargs["messages"] = messages
 
-        client = get_client()
         input_tokens = None
         try:
             if stream:
-                with client.messages.stream(**kwargs) as completion:
+                with self.client.messages.stream(**kwargs) as completion:
                     for event in completion:
                         if event.type == "content_block_delta":
                             if event.delta.type == "thinking_delta":
@@ -96,7 +108,7 @@ class AnthropicCompletionProvider(CompletionProvider):
                             input_tokens = event.message.usage.input_tokens
                         if (
                             event.type == "message_delta"
-                            and (pricing := claude_pricing(args["model"]))
+                            and (pricing := claude_pricing(model))
                             and input_tokens
                         ):
                             yield UsageEvent.with_pricing(
@@ -107,13 +119,13 @@ class AnthropicCompletionProvider(CompletionProvider):
                             )
 
             else:
-                response = client.messages.create(**kwargs, stream=False)
+                response = self.client.messages.create(**kwargs, stream=False)
                 yield MessageDeltaEvent(
                     "".join(
                         c.text if c.type == "text" else "" for c in response.content
                     )
                 )
-                if pricing := claude_pricing(args["model"]):
+                if pricing := claude_pricing(model):
                     yield UsageEvent.with_pricing(
                         prompt_tokens=response.usage.input_tokens,
                         completion_tokens=response.usage.output_tokens,

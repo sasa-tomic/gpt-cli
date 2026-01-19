@@ -20,6 +20,8 @@ from gptcli.assistant import (
     Assistant,
     DEFAULT_ASSISTANTS,
     AssistantGlobalArgs,
+    GlobalDefaults,
+    PROVIDERS,
     init_assistant,
 )
 from gptcli.cli import (
@@ -86,9 +88,18 @@ def parse_args(config: GptCliConfig):
     )
     parser.add_argument(
         "--model",
+        "-m",
         type=str,
         default=None,
         help="The model to use for the chat session. Overrides the default model defined for the assistant.",
+    )
+    parser.add_argument(
+        "--provider",
+        type=str,
+        default=None,
+        choices=sorted(PROVIDERS),
+        help="The provider to use (openai, anthropic, google, cohere, llama, azure-openai). "
+        "Overrides the default provider.",
     )
     parser.add_argument(
         "--temperature",
@@ -240,7 +251,13 @@ def main():
     if config.llama_models is not None:
         init_llama_models(config.llama_models)
 
-    assistant = init_assistant(cast(AssistantGlobalArgs, args), config.assistants)
+    global_defaults = GlobalDefaults(
+        provider=config.default_provider,
+        model=config.default_model,
+    )
+    assistant = init_assistant(
+        cast(AssistantGlobalArgs, args), config.assistants, global_defaults
+    )
 
     if args.prompt is not None:
         run_non_interactive(args, assistant)

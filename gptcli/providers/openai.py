@@ -33,13 +33,14 @@ class OpenAICompletionProvider(CompletionProvider):
     ) -> Iterator[CompletionEvent]:
         model = args["model"]
         if model.startswith("oai-compat:"):
-            model = model[len("oai-compat:") :]
-
-        if model.startswith("oai-azure:"):
-            model = model[len("oai-azure:") :]
+            model = model[len("oai-compat:"):]
+        elif model.startswith("openai:"):
+            model = model[len("openai:"):]
+        elif model.startswith("oai-azure:"):
+            model = model[len("oai-azure:"):]
 
         kwargs = {}
-        is_reasoning = is_reasoning_model(args["model"])
+        is_reasoning = is_reasoning_model(model)
         if "temperature" in args and not is_reasoning:
             kwargs["temperature"] = args["temperature"]
         if "top_p" in args and not is_reasoning:
