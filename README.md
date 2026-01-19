@@ -73,116 +73,144 @@ You can also use a `gpt.yml` file for configuration. See the [Configuration](REA
 
 Make sure to set the `OPENAI_API_KEY` environment variable to your OpenAI API key (or put it in the `~/.config/gpt-cli/gpt.yml` file as described below).
 
-```
-usage: gpt [-h] [--no_markdown] [--model MODEL] [--temperature TEMPERATURE] [--top_p TOP_P]
-              [--thinking THINKING_BUDGET] [--log_file LOG_FILE] 
-              [--log_level {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [--prompt PROMPT] 
-              [--execute EXECUTE] [--no_stream] [{dev,general,bash}]
+### Quick prompts
 
-Run a chat session with ChatGPT. See https://github.com/kharvd/gpt-cli for more information.
+The simplest way to use gpt-cli is to pass your prompt directly:
+
+```bash
+gpt "What is the capital of France?"
+gpt find all markdown files recursively    # quotes optional for simple prompts
+```
+
+This runs non-interactively and exits after the response.
+
+### Interactive mode
+
+Run without arguments to start an interactive chat session:
+
+```bash
+gpt                    # start with default assistant
+gpt -a dev             # start with the dev assistant
+```
+
+### Command-line options
+
+```
+usage: gpt [-h] [-a ASSISTANT] [--model MODEL] [--provider PROVIDER]
+           [--temperature TEMPERATURE] [--top_p TOP_P] [--thinking THINKING_BUDGET]
+           [--prompt PROMPT] [--execute EXECUTE] [--no_markdown] [--no_stream]
+           [--no_price] [prompt ...]
 
 positional arguments:
-  {dev,general,bash}
-                        The name of assistant to use. `general` (default) is a generally helpful
-                        assistant, `dev` is a software development assistant with shorter
-                        responses. You can specify your own assistants in the config file
-                        ~/.config/gpt-cli/gpt.yml. See the README for more information.
+  prompt                The prompt to send. If provided, runs non-interactively and exits.
+                        Multiple words are joined with spaces. Use `-` to read from stdin.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --no_markdown         Disable markdown formatting in the chat session.
-  --model MODEL         The model to use for the chat session. Overrides the default model defined
-                        for the assistant.
-  --temperature TEMPERATURE
-                        The temperature to use for the chat session. Overrides the default
-                        temperature defined for the assistant.
-  --top_p TOP_P         The top_p to use for the chat session. Overrides the default top_p defined
-                        for the assistant.
-  --thinking THINKING_BUDGET
-                        Enable Claude's extended thinking mode with the specified token budget.
-                        Only applies to Claude 3.7 models.
-  --log_file LOG_FILE   The file to write logs to. Supports strftime format codes.
-  --log_level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                        The log level to use
-  --prompt PROMPT, -p PROMPT
-                        If specified, will not start an interactive chat session and instead will
-                        print the response to standard output and exit. May be specified multiple
-                        times. Use `-` to read the prompt from standard input. Implies
-                        --no_markdown.
-  --execute EXECUTE, -e EXECUTE
-                        If specified, passes the prompt to the assistant and allows the user to
-                        edit the produced shell command before executing it. Implies --no_stream.
-                        Use `-` to read the prompt from standard input.
-  --no_stream           If specified, will not stream the response to standard output. This is
-                        useful if you want to use the response in a script. Ignored when the
-                        --prompt option is not specified.
-  --no_price            Disable price logging.
+  -a, --assistant       The assistant to use (general, dev, bash, or custom).
+  -m, --model MODEL     The model to use. Overrides assistant/global config.
+  --provider PROVIDER   The provider to use (openai, anthropic, google, cohere, llama, azure-openai).
+  --temperature TEMP    The temperature (0.0-2.0).
+  --top_p TOP_P         The top_p value (0.0-1.0).
+  --thinking BUDGET     Enable Claude's extended thinking mode with token budget.
+  -p, --prompt PROMPT   Legacy prompt flag (use positional args instead).
+  -e, --execute CMD     Execute mode: generate and edit shell command before running.
+  --no_markdown         Disable markdown formatting.
+  --no_stream           Disable streaming output.
+  --no_price            Disable price display.
 ```
 
 Type `:q` or Ctrl-D to exit, `:c` or Ctrl-C to clear the conversation, `:r` or Ctrl-R to re-generate the last response.
 To enter multi-line mode, enter a backslash `\` followed by a new line. Exit the multi-line mode by pressing ESC and then Enter.
 
+### Assistants
+
 The `dev` assistant is instructed to be an expert in software development and provide short responses.
 
 ```bash
-$ gpt dev
+gpt -a dev "explain this error"
 ```
 
-The `bash` assistant is instructed to be an expert in bash scripting and provide only bash commands. Use the `--execute` option to execute the commands. It works best with the `gpt-4` model.
+The `bash` assistant is instructed to be an expert in bash scripting and provide only bash commands. Use the `--execute` option to execute the commands.
 
 ```bash
-gpt bash -e "How do I list files in a directory?"
+gpt -a bash -e "How do I list files in a directory?"
 ```
 
-This will prompt you to edit the command in your `$EDITOR` it before executing it.
+This will prompt you to edit the command in your `$EDITOR` before executing it.
 
 ## Configuration
 
 You can configure the assistants in the config file `~/.config/gpt-cli/gpt.yml`. The file is a YAML file with the following structure (see also [config.py](./gptcli/config.py))
 
 ```yaml
+# Global defaults - apply to all assistants unless overridden
 default_assistant: <assistant_name>
-markdown: False
-openai_api_key: <openai_api_key>
-anthropic_api_key: <anthropic_api_key>
+default_provider: <openai|anthropic|google|cohere|llama|azure-openai>
+default_model: <model_name>
+
+markdown: True
+show_price: True
 log_file: <path>
 log_level: <DEBUG|INFO|WARNING|ERROR|CRITICAL>
+
+# API keys (can also use environment variables)
+openai_api_key: <key>
+openai_base_url: <url>           # optional, for custom endpoints
+anthropic_api_key: <key>
+anthropic_base_url: <url>        # optional, for custom endpoints
+google_api_key: <key>
+cohere_api_key: <key>
+
 assistants:
   <assistant_name>:
-    model: <model_name>
-    temperature: <temperature>
-    top_p: <top_p>
-    thinking_budget: <token_budget>  # Claude 3.7 models only
+    provider: <provider>         # optional, overrides default_provider
+    model: <model_name>          # optional, overrides default_model
+    base_url: <url>              # optional, per-assistant endpoint override
+    api_key: <key>               # optional, per-assistant API key override
+    temperature: <0.0-2.0>
+    top_p: <0.0-1.0>
+    thinking_budget: <tokens>    # Claude 3.7 models only
     messages:
       - { role: <role>, content: <message> }
       - ...
-  <assistant_name>:
-    ...
 ```
 
-You can override the parameters for the pre-defined assistants as well.
+### Configuration priority
 
-You can specify the default assistant to use by setting the `default_assistant` field. If you don't specify it, the default assistant is `general`. You can also specify the `model`, `temperature` and `top_p` to use for the assistant. If you don't specify them, the default values are used. These parameters can also be overridden by the command-line arguments.
+Settings are resolved in this order (highest priority first):
+1. Command-line arguments (`--provider`, `--model`, etc.)
+2. Assistant-specific config
+3. Global defaults (`default_provider`, `default_model`)
+4. Built-in defaults (provider: openai, model: gpt-4o)
 
-Example:
+### Example configuration
 
 ```yaml
 default_assistant: dev
-markdown: True
-openai_api_key: <openai_api_key>
+default_provider: anthropic
+default_model: claude-sonnet-4-20250514
+
+anthropic_api_key: <your_key>
+
 assistants:
   pirate:
-    model: gpt-4
+    model: gpt-4o
+    provider: openai
     temperature: 1.0
     messages:
       - { role: system, content: "You are a pirate." }
+  
+  glm:
+    provider: openai
+    model: glm-4
+    base_url: https://api.example.com/v1
+    api_key: <glm_api_key>
 ```
 
 ```
-$ gpt pirate
-
-> Arrrr
-Ahoy, matey! What be bringing ye to these here waters? Be it treasure or adventure ye seek, we be sailing the high seas together. Ready yer map and compass, for we have a long voyage ahead!
+$ gpt -a pirate "Arrrr"
+Ahoy, matey! What be bringing ye to these here waters? Be it treasure or adventure ye seek, we be sailing the high seas together!
 ```
 
 ### Read other context to the assistant with !include
@@ -201,57 +229,72 @@ assistants:
       - { role: system, content: !include "pirate.txt" }
 ```
 
-### Customize OpenAI API URL
+### Custom API endpoints
 
-If you are using other models compatible with the OpenAI Python SDK, you can configure them by modifying the `openai_base_url` setting in the config file or using the `OPENAI_BASE_URL` environment variable .
-
-Example:
-
-```
-openai_base_url: https://your-custom-api-url.com/v1
-```
-
-Use `oai-compat:` prefix for the model name to pass non-GPT model names to the API. For example, to chat with Llama3-70b on [Together](https://together.ai), use the following command:
-
-```bash
-OPENAI_API_KEY=$TOGETHER_API_KEY OPENAI_BASE_URL=https://api.together.xyz/v1 gpt general --model oai-compat:meta-llama/Llama-3-70b-chat-hf
-```
-
-The prefix is stripped before sending the request to the API.
-
-Similarly, use the `oai-azure:` model name prefix to use a model deployed via Azure Open AI. For example, `oai-azure:my-deployment-name`.
-
-With assistant configuration, you can override the base URL and API key for a specific assistant.
+You can use any OpenAI-compatible or Anthropic-compatible API by setting the `base_url` in your assistant config:
 
 ```yaml
-# ~/.config/gpt-cli/gpt.yml
 assistants:
   llama:
-    model: oai-compat:meta-llama/llama-3.3-70b-instruct
-    openai_base_url_override: https://openrouter.ai/api/v1
-    openai_api_key_override: $OPENROUTER_API_KEY
+    provider: openai
+    model: meta-llama/llama-3.3-70b-instruct
+    base_url: https://openrouter.ai/api/v1
+    api_key: <your_openrouter_key>
+  
+  together:
+    provider: openai
+    model: meta-llama/Llama-3-70b-chat-hf
+    base_url: https://api.together.xyz/v1
+    api_key: <your_together_key>
 ```
 
-## Other chat bots
+Or use environment variables for global configuration:
+
+```bash
+OPENAI_BASE_URL=https://api.together.xyz/v1 OPENAI_API_KEY=$TOGETHER_KEY gpt --model llama-3-70b
+```
+
+For Azure OpenAI, use the `azure-openai` provider:
+
+```yaml
+assistants:
+  azure:
+    provider: azure-openai
+    model: my-deployment-name
+```
+
+#### Legacy model prefixes (backward compatibility)
+
+The following model prefixes still work for backward compatibility:
+- `oai-compat:model-name` - OpenAI-compatible API
+- `openai:model-name` - OpenAI API with arbitrary model name
+- `anthropic:model-name` - Anthropic API with arbitrary model name
+- `oai-azure:deployment-name` - Azure OpenAI
+
+## Other providers
 
 ### Anthropic Claude
 
-To use Claude, you should have an API key from [Anthropic](https://console.anthropic.com/) (currently there is a waitlist for API access). After getting the API key, you can add an environment variable
+Set up your API key:
 
 ```bash
 export ANTHROPIC_API_KEY=<your_key_here>
+# Optional: custom endpoint
+export ANTHROPIC_BASE_URL=https://your-proxy.com
 ```
 
-or a config line in `~/.config/gpt-cli/gpt.yml`:
+Or in config:
 
 ```yaml
 anthropic_api_key: <your_key_here>
+anthropic_base_url: <optional_custom_url>
 ```
 
-Now you should be able to run `gpt` with `--model claude-3-(opus|sonnet|haiku)-<date>`.
+Use Claude models:
 
 ```bash
-gpt --model claude-3-opus-20240229
+gpt --provider anthropic --model claude-sonnet-4-20250514
+gpt --model claude-3-opus-20240229    # provider auto-detected from model name
 ```
 
 #### Claude 3.7 Sonnet Extended Thinking Mode
