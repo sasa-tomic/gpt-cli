@@ -20,7 +20,7 @@ class GptCliConfig:
     default_model: Optional[str] = None
     markdown: bool = True
     show_price: bool = True
-    api_key: Optional[str] = os.environ.get("OPENAI_API_KEY")
+    api_key: Optional[str] = os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENAI_KEY")
     openai_api_key: Optional[str] = os.environ.get("OPENAI_API_KEY")
     openai_base_url: Optional[str] = os.environ.get("OPENAI_BASE_URL")
     openai_azure_api_version: str = "2024-10-21"
