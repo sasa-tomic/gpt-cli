@@ -5,7 +5,7 @@ description = "Command-line interface for ChatGPT and Claude"
 authors = [{ name = "Val Kharitonov", email = "val@kharvd.com" }]
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.12,<3.15"
+requires-python = ">=3.12,<3.14"
 keywords = [
     "cli",
     "command-line",

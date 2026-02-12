@@ -2,9 +2,14 @@
 
 import sys
 
-MIN_PYTHON = (3, 9)
-if sys.version_info < MIN_PYTHON:
-    sys.exit("Python %s.%s or later is required.\n" % MIN_PYTHON)
+MIN_PYTHON = (3, 12)
+MAX_PYTHON = (3, 14)
+if sys.version_info < MIN_PYTHON or sys.version_info >= MAX_PYTHON:
+    sys.exit(
+        f"Python >={MIN_PYTHON[0]}.{MIN_PYTHON[1]},<{MAX_PYTHON[0]}.{MAX_PYTHON[1]} is required "
+        f"(found {sys.version_info.major}.{sys.version_info.minor}).\n"
+        f"hint: uv tool install . --python {MAX_PYTHON[0]}.{MAX_PYTHON[1] - 1}"
+    )
 
 import os
 from typing import cast

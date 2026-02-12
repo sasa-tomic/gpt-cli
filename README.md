@@ -33,7 +33,7 @@ uvx --from gpt-command-line gpt
 
 ## Installation
 
-This install assumes a Linux/OSX machine with Python and pip available.
+Requires Python >=3.12,<3.14.
 
 ```bash
 pip install gpt-command-line
@@ -51,6 +51,12 @@ Or install by cloning the repository manually:
 git clone https://github.com/kharvd/gpt-cli.git
 cd gpt-cli
 pip install .
+```
+
+When using `uv tool install`, pass `--python 3.13` if your system Python is 3.14+:
+
+```bash
+uv tool install . --python 3.13
 ```
 
 Add the OpenAI API key to your `.bashrc` file (in the root of your home folder).
